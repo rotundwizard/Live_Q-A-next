@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Q&A</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; }
+    #questions div { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Live Q&A</h1>
+
+  <div id="participant">
+    <input id="username" placeholder="Enter your name (optional)">
+    <textarea id="question" placeholder="Your question..."></textarea><br>
+    <button onclick="submitQuestion()">Submit</button>
+    <h2>Approved Questions</h2>
+    <div id="questions"></div>
+  </div>
+
+  <hr>
+
+  <div id="moderator-login">
+    <h2>Moderator Login</h2>
+    <input id="modpass" type="password" placeholder="Enter moderator password">
+    <button onclick="loginModerator()">Login</button>
+  </div>
+
+  <div id="moderator" class="hidden">
+    <h2>Moderator Panel</h2>
+    <div id="all-questions"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let username = "";
+    let modPassword = "";
+
+    function submitQuestion() {
+      username = document.getElementById('username').value;
+      const text = document.getElementById('question').value;
+      if (text.trim()) {
+        socket.emit('submit_question', { username, text });
+        document.getElementById('question').value = '';
+      }
+    }
+
+    function upvote(id) {
+      socket.emit('upvote', id);
+    }
+
+    function loginModerator() {
+      modPassword = document.getElementById('modpass').value;
+      socket.emit('join_moderator', modPassword);
+    }
+
+    function act(id, action) {
+      socket.emit('moderator_action', { id, action, password: modPassword });
+    }
+
+    socket.on('approved_questions', (questions) => {
+      const container = document.getElementById('questions');
+      container.innerHTML = '';
+      questions.sort((a, b) => b.upvotes - a.upvotes).forEach(q => {
+        const div = document.createElement('div');
+        div.innerHTML = `<strong>${q.username || 'Anon'}:</strong> ${q.text}<br>
+                         <em>${q.upvotes} votes</em> <button onclick="upvote('${q.id}')">Vote</button>`;
+        container.appendChild(div);
+      });
+    });
+
+    socket.on('all_questions', (questions) => {
+      document.getElementById('moderator-login').classList.add('hidden');
+      document.getElementById('moderator').classList.remove('hidden');
+      const container = document.getElementById('all-questions');
+      container.innerHTML = '';
+      questions.sort((a, b) => b.created_at - a.created_at).forEach(q => {
+        const div = document.createElement('div');
+        div.innerHTML = `<strong>${q.username || 'Anon'}:</strong> ${q.text}<br>
+          Status: ${q.status} | Votes: ${q.upvotes}<br>
+          <button onclick="act('${q.id}', 'approved')">Approve</button>
+          <button onclick="act('${q.id}', 'live')">Live</button>
+          <button onclick="act('${q.id}', 'answered')">Answered</button>`;
+        container.appendChild(div);
+      });
+    });
+  </script>
+</body>
+</html>
