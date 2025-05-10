@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Question</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 50px; background: #f0f0f0; }
+    #live-question { font-size: 2em; margin-top: 20px; }
+    #username { font-style: italic; color: #666; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Live Question</h1>
+  <div id="username"></div>
+  <div id="live-question">Waiting for a live question...</div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const display = document.getElementById('live-question');
+    const user = document.getElementById('username');
+
+    socket.on('live_question', (question) => {
+      if (question) {
+        user.textContent = question.username ? `From: ${question.username}` : 'From: Anonymous';
+        display.textContent = question.text;
+      } else {
+        user.textContent = '';
+        display.textContent = 'Waiting for a live question...';
+      }
+    });
+  </script>
+</body>
+</html>
