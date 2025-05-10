@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  liveqa:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - MODERATOR_PASSWORD=mod123
+    restart: unless-stopped
+
+volumes:
+  data:
