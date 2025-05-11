@@ -1,0 +1,18 @@
+{
+  "name": "live-qa-app",
+  "version": "1.0.0",
+  "description": "A self-hostable real-time Q&A web app for live events with moderator and participant roles.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1",
+    "sqlite3": "^5.1.7",
+    "uuid": "^9.0.1"
+  },
+  "keywords": []
+}
