@@ -1,0 +1,93 @@
+<!-- filepath: /Users/chris/Documents/Github/Live_Q-A/public/moderator.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Moderator Panel</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    #questions div { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+    .question { display: flex; justify-content: space-between; align-items: center; }
+  </style>
+</head>
+<body>
+  <h1>Moderator Panel</h1>
+
+  <!-- Add sorting buttons -->
+  <div id="sorting-controls">
+    <button onclick="changeSort('recency')">Sort by Recency</button>
+    <button onclick="changeSort('live')">Sort by Live</button>
+    <button onclick="changeSort('approved')">Sort by Approved</button>
+  </div>
+
+  <!-- Question list container -->
+  <div id="questions"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io('http://localhost:3000'); // Replace 3000 with your server's port
+    let currentSort = 'recency'; // Default sort order
+
+    // Authenticate moderator
+    const password = prompt("Enter moderator password:");
+    socket.emit('moderator_login', password);
+
+    // Listen for all questions and update the list
+    socket.on('all_questions', (questions) => {
+      updateQuestionList(questions);
+    });
+
+    // Update the question list based on the current sort order
+    function updateQuestionList(questions) {
+      const container = document.getElementById('questions');
+      container.innerHTML = '';
+
+      // Sort questions based on the current sort order
+      if (currentSort === 'recency') {
+        questions.sort((a, b) => b.created_at - a.created_at);
+      } else if (currentSort === 'live') {
+        questions.sort((a, b) => (a.status === 'live' ? -1 : 1));
+      } else if (currentSort === 'approved') {
+        questions.sort((a, b) => (a.status === 'approved' ? -1 : 1));
+      }
+
+      // Render the sorted questions
+      questions.forEach((q) => {
+        const div = document.createElement('div');
+        div.className = 'question';
+        div.innerHTML = `
+          <span>${q.text} (${q.status})</span>
+          <button onclick="markAsLive('${q.id}')">Mark as Live</button>
+          <button onclick="approve('${q.id}')">Approve</button>
+          <button onclick="reject('${q.id}')">Reject</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // Mark a question as live
+    function markAsLive(id) {
+      socket.emit('moderator_action', { id, action: 'live', password });
+    }
+
+    // Approve a question
+    function approve(id) {
+      socket.emit('moderator_action', { id, action: 'approved', password });
+    }
+
+    // Reject a question
+    function reject(id) {
+      socket.emit('moderator_action', { id, action: 'rejected', password });
+    }
+
+    // Change the sort order
+    function changeSort(order) {
+      currentSort = order;
+      socket.emit('request_questions'); // Request the latest questions from the server
+    }
+
+    
+  </script>
+</body>
+</html>

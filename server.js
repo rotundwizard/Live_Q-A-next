@@ -50,6 +50,16 @@ app.get('/questions', (req, res) => {
   });
 });
 
+// Add an endpoint to serve the live page
+app.get('/live', (req, res) => {
+  res.sendFile(__dirname + '/public/live.html');
+});
+
+// Add an endpoint to serve the live page
+app.get('/moderator', (req, res) => {
+  res.sendFile(__dirname + '/public/moderator.html');
+});
+
 // WebSocket logic
 io.on('connection', (socket) => {
   console.log('a user connected:', socket.id);
@@ -76,7 +86,17 @@ io.on('connection', (socket) => {
     });
   });
 
+// POSSIBLY REMOVE IF NOT NEEDED AFTER TAKING MODERATOR LOGIC OUT OF INDEX.HTML
   socket.on('join_moderator', (password) => {
+    if (password !== MODERATOR_PASSWORD) return;
+    socket.join('moderators');
+    db.all("SELECT * FROM questions", [], (err, rows) => {
+      if (!err) socket.emit('all_questions', rows);
+    });
+  });
+// END REMOVAL
+
+  socket.on('moderator_login', (password) => {
     if (password !== MODERATOR_PASSWORD) return;
     socket.join('moderators');
     db.all("SELECT * FROM questions", [], (err, rows) => {
@@ -89,13 +109,22 @@ io.on('connection', (socket) => {
 
     if (action === 'live') {
       db.run("UPDATE questions SET status = 'approved' WHERE status = 'live'");
-      db.run("UPDATE questions SET status = 'live' WHERE id = ?", [id]);
+      db.run("UPDATE questions SET status = 'live' WHERE id = ?", [id], function (err) {
+        if (!err) {
+          db.get("SELECT * FROM questions WHERE id = ?", [id], (err, row) => {
+            if (!err) {
+              io.emit('live_question', row); // Emit the live question to all clients
+            }
+          });
+        }
+      });
     } else {
       db.run("UPDATE questions SET status = ? WHERE id = ?", [action, id]);
     }
 
-    db.all("SELECT * FROM questions ORDER BY created_at DESC", [], (err, rows) => {
-      if (!err) io.to('moderators').emit('all_questions', rows);
+    // Emit the updated list of approved questions
+    db.all("SELECT * FROM questions WHERE status = 'approved'", [], (err, rows) => {
+      if (!err) io.emit('approved_questions', rows);
     });
   });
 
@@ -115,6 +144,12 @@ io.on('connection', (socket) => {
           }
         });
       }
+    });
+  });
+
+  socket.on('request_questions', () => {
+    db.all("SELECT * FROM questions", [], (err, rows) => {
+      if (!err) socket.emit('all_questions', rows);
     });
   });
 });

@@ -17,7 +17,12 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
+// Test for Connection
+const socket = io('http://localhost:3000'); // Replace 3000 with your server's port
+socket.on('connect', () => {
+  console.log('Connected to server:', socket.id);
+});
+// END TEST
     const display = document.getElementById('live-question');
     const user = document.getElementById('username');
 
