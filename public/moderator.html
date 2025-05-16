@@ -9,6 +9,8 @@
     body { font-family: sans-serif; padding: 20px; }
     #questions div { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
     .question { display: flex; justify-content: space-between; align-items: center; }
+    .approved {color: green; font-weight: bold;}
+    .live {background-color: yellow;}
   </style>
 </head>
 <body>
@@ -19,6 +21,7 @@
     <button onclick="changeSort('recency')">Sort by Recency</button>
     <button onclick="changeSort('live')">Sort by Live</button>
     <button onclick="changeSort('approved')">Sort by Approved</button>
+    <button onclick="changeSort('votes')">Sort by Votes</button>
   </div>
 
   <!-- Question list container -->
@@ -50,17 +53,25 @@
         questions.sort((a, b) => (a.status === 'live' ? -1 : 1));
       } else if (currentSort === 'approved') {
         questions.sort((a, b) => (a.status === 'approved' ? -1 : 1));
+      } else if (currentSort === 'votes') {
+        questions.sort((a, b) => b.upvotes - a.upvotes);
       }
 
       // Render the sorted questions
       questions.forEach((q) => {
         const div = document.createElement('div');
         div.className = 'question';
+        if (q.status === 'live') {
+          div.classList.add('live'); // Change style for live questions
+        }
+        if (q.status === 'approved') {
+          div.classList.add('approved'); // Change style for approved questions
+        }
         div.innerHTML = `
-          <span>${q.text} (${q.status})</span>
+          <span>${q.text} | ${q.upvotes}</span>
           <button onclick="markAsLive('${q.id}')">Mark as Live</button>
           <button onclick="approve('${q.id}')">Approve</button>
-          <button onclick="reject('${q.id}')">Reject</button>
+          <button onclick="delete_question('${q.id}')">Delete</button>
         `;
         container.appendChild(div);
       });
@@ -76,9 +87,9 @@
       socket.emit('moderator_action', { id, action: 'approved', password });
     }
 
-    // Reject a question
-    function reject(id) {
-      socket.emit('moderator_action', { id, action: 'rejected', password });
+    // delete a question
+    function delete_question(id) {
+      socket.emit('moderator_action', { id, action: 'questiondeleted', password });
     }
 
     // Change the sort order

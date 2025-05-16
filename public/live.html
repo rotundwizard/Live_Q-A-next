@@ -5,24 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Live Question</title>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 50px; background: #f0f0f0; }
-    #live-question { font-size: 2em; margin-top: 20px; }
-    #username { font-style: italic; color: #666; margin-bottom: 20px; }
+    html, body {
+      height: 100%; /* Ensure both html and body take up the full height */
+      margin: 0; /* Remove default margin */
+      display: flex; /* Enable flexbox */
+      justify-content: center; /* Center horizontally */
+      align-items: center; /* Center vertically */
+      font-family: sans-serif;
+      text-align: center;
+      background: #f0f0f0;
+    }
+    #live-question-container {
+      display: flex;
+      flex-direction: column; /* Stack children vertically */
+      align-items: center; /* Center children horizontally */
+    }
+    #live-question {
+      font-size: 2em;
+      padding: 20px;
+    }
+    #username {
+      font-style: italic;
+      color: #666;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
-  <h1>Live Question</h1>
-  <div id="username"></div>
-  <div id="live-question">Waiting for a live question...</div>
-
+  <div id="live-question-container">
+    <div id="live-question">Waiting for a live question...</div>
+    <div id="username"></div>
+  </div>
   <script src="/socket.io/socket.io.js"></script>
   <script>
-// Test for Connection
-const socket = io('http://localhost:3000'); // Replace 3000 with your server's port
-socket.on('connect', () => {
-  console.log('Connected to server:', socket.id);
-});
-// END TEST
+    // Test for Connection
+    const socket = io('http://localhost:3000'); // Replace 3000 with your server's port
+    socket.on('connect', () => {
+      console.log('Connected to server:', socket.id);
+    });
+    // END TEST
     const display = document.getElementById('live-question');
     const user = document.getElementById('username');
 

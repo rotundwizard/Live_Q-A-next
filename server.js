@@ -76,17 +76,18 @@ io.on('connection', (socket) => {
   socket.on('submit_question', ({ username, text }) => {
     const id = uuidv4();
     const created_at = Date.now();
-    submittedQuestionIds.add(id);
     const stmt = db.prepare("INSERT INTO questions (id, username, text, status, created_at) VALUES (?, ?, ?, 'submitted', ?)");
-    stmt.run(id, username, text, created_at);
-    stmt.finalize(() => {
-      db.get("SELECT * FROM questions WHERE id = ?", [id], (err, row) => {
-        if (!err) io.to('moderators').emit('new_question', row);
-      });
+    stmt.run(id, username, text, created_at, (err) => {
+      if (!err) {
+        // Emit the updated list of all questions to moderators
+        db.all("SELECT * FROM questions", [], (err, rows) => {
+          if (!err) io.to('moderators').emit('all_questions', rows);
+        });
+      }
     });
+    stmt.finalize();
   });
 
-// POSSIBLY REMOVE IF NOT NEEDED AFTER TAKING MODERATOR LOGIC OUT OF INDEX.HTML
   socket.on('join_moderator', (password) => {
     if (password !== MODERATOR_PASSWORD) return;
     socket.join('moderators');
@@ -94,7 +95,6 @@ io.on('connection', (socket) => {
       if (!err) socket.emit('all_questions', rows);
     });
   });
-// END REMOVAL
 
   socket.on('moderator_login', (password) => {
     if (password !== MODERATOR_PASSWORD) return;
@@ -107,13 +107,42 @@ io.on('connection', (socket) => {
   socket.on('moderator_action', ({ id, action, password }) => {
     if (password !== MODERATOR_PASSWORD) return;
 
-    if (action === 'live') {
+    if (action === 'questiondeleted') {
+      db.run("DELETE FROM questions WHERE id = ?", [id], (err) => {
+        if (!err) {
+          // Emit the updated list of all questions to moderators
+          db.all("SELECT * FROM questions", [], (err, rows) => {
+            if (!err) io.emit('all_questions', rows);
+          });
+        }
+      });
+    }
+
+    else if (action === 'approved') {
+      db.run("UPDATE questions SET status = 'approved' WHERE id = ?", [id], (err) => {
+        if (!err) {
+          // Emit the updated list of all questions to moderators
+          db.all("SELECT * FROM questions", [], (err, rows) => {
+            if (!err) io.to('moderators').emit('all_questions', rows);
+          });
+        }
+      });
+    }
+
+    else if (action === 'live') {
       db.run("UPDATE questions SET status = 'approved' WHERE status = 'live'");
       db.run("UPDATE questions SET status = 'live' WHERE id = ?", [id], function (err) {
         if (!err) {
           db.get("SELECT * FROM questions WHERE id = ?", [id], (err, row) => {
             if (!err) {
               io.emit('live_question', row); // Emit the live question to all clients
+
+              // Fetch the updated list of all questions
+              db.all("SELECT * FROM questions", [], (err, rows) => {
+                if (!err) {
+                  io.to('moderators').emit('all_questions', rows); // Emit the updated list of all questions to moderators
+                }
+              });
             }
           });
         }
