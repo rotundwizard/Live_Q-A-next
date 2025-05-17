@@ -31,3 +31,13 @@ A self-hostable, real-time web app for running live Q&A sessions with moderator 
    ```bash
    git clone https://github.com/yourusername/live-qa-app.git
    cd live-qa-app
+
+
+## Roadmap
+ - [X] Initial functionality in realtime
+ - [X] Add unarchive and unapprove buttons
+ - [ ] Finalize styling and layout
+ - [ ] Include basic how-to information for participants and moderators
+ - [ ] Run in docker and install on server
+ - [ ] How to access from guest network?
+ - [ ] Can it be hosted on Bluehost?

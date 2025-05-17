@@ -13,7 +13,7 @@
       align-items: center; /* Center vertically */
       font-family: sans-serif;
       text-align: center;
-      background: #f0f0f0;
+      background: #000000;
     }
     #live-question-container {
       display: flex;
@@ -22,11 +22,12 @@
     }
     #live-question {
       font-size: 2em;
+      color: white;
       padding: 20px;
     }
     #username {
       font-style: italic;
-      color: #666;
+      color: #e7ff2e;
       margin-top: 10px;
     }
   </style>
@@ -49,7 +50,7 @@
 
     socket.on('live_question', (question) => {
       if (question) {
-        user.textContent = question.username ? `From: ${question.username}` : 'From: Anonymous';
+        user.textContent = question.username ? `- ${question.username}` : '- Anonymous';
         display.textContent = question.text;
       } else {
         user.textContent = '';

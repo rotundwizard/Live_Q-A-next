@@ -7,10 +7,44 @@
   <title>Moderator Panel</title>
   <style>
     body { font-family: sans-serif; padding: 20px; }
-    #questions div { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
-    .question { display: flex; justify-content: space-between; align-items: center; }
+    #sorting-controls {
+      margin-bottom: 20px; /* Add spacing below the sorting controls */
+    }
+    #questions div { margin: 0; padding: 10px;}
+    .question {
+      display: flex;
+      flex-direction: column; /* Stack children vertically */
+      justify-content: flex-start;
+      align-items: flex-start;
+      margin-bottom: 15px;
+      padding: 10px;
+      border: 1px solid #ccc;
+    }
+    .question-text {
+      font-size: 1em;
+      margin-bottom: 10px; /* Add spacing between the question text and buttons */
+      border: none;
+    }
+    .buttons button {
+      margin-right: 5px; /* Add spacing between buttons */
+    }
     .approved {color: green; font-weight: bold;}
     .live {background-color: yellow;}
+    #archived-questions {
+      border: 1px solid #ccc;
+      padding: 10px;
+      background-color: #f9f9f9;
+    }
+    .archived-question {
+      margin-bottom: 10px; /* Add spacing between questions */
+      padding: 10px; /* Add padding inside each question block */
+      border-bottom: 1px solid #ddd; /* Optional: Add a separator between questions */
+    }
+    .archived-date {
+      font-size: 0.9em;
+      color: #666;
+      margin-top: 5px; /* Add spacing between the question text and the date */
+    }
   </style>
 </head>
 <body>
@@ -19,7 +53,6 @@
   <!-- Add sorting buttons -->
   <div id="sorting-controls">
     <button onclick="changeSort('recency')">Sort by Recency</button>
-    <button onclick="changeSort('live')">Sort by Live</button>
     <button onclick="changeSort('approved')">Sort by Approved</button>
     <button onclick="changeSort('votes')">Sort by Votes</button>
   </div>
@@ -46,32 +79,41 @@
       const container = document.getElementById('questions');
       container.innerHTML = '';
 
-      // Sort questions based on the current sort order
-      if (currentSort === 'recency') {
-        questions.sort((a, b) => b.created_at - a.created_at);
-      } else if (currentSort === 'live') {
-        questions.sort((a, b) => (a.status === 'live' ? -1 : 1));
-      } else if (currentSort === 'approved') {
-        questions.sort((a, b) => (a.status === 'approved' ? -1 : 1));
-      } else if (currentSort === 'votes') {
-        questions.sort((a, b) => b.upvotes - a.upvotes);
-      }
-
-      // Render the sorted questions
       questions.forEach((q) => {
         const div = document.createElement('div');
         div.className = 'question';
+
+        // Add styles for live and approved questions
         if (q.status === 'live') {
-          div.classList.add('live'); // Change style for live questions
+          div.classList.add('live'); // Highlight live questions
         }
         if (q.status === 'approved') {
-          div.classList.add('approved'); // Change style for approved questions
+          div.classList.add('approved'); // Style approved questions
         }
+
+        // Render buttons conditionally
+        let buttons = '';
+        if (q.status === 'live') {
+          buttons = `
+            <div class="buttons">
+              <button onclick="archive_question('${q.id}')">Archive</button>
+            </div>
+          `;
+        } else {
+          buttons = `
+            <div class="buttons">
+              <button onclick="markAsLive('${q.id}')">Mark as Live</button>
+              ${q.status === 'approved' 
+                ? `<button onclick="unapprove('${q.id}')">Unapprove</button>` 
+                : `<button onclick="approve('${q.id}')">Approve</button>`}
+              <button onclick="delete_question('${q.id}')">Delete</button>
+            </div>
+          `;
+        }
+
         div.innerHTML = `
-          <span>${q.text} | ${q.upvotes}</span>
-          <button onclick="markAsLive('${q.id}')">Mark as Live</button>
-          <button onclick="approve('${q.id}')">Approve</button>
-          <button onclick="delete_question('${q.id}')">Delete</button>
+          <div class="question-text">${q.text} | ${q.upvotes}</div>
+          ${buttons}
         `;
         container.appendChild(div);
       });
@@ -87,18 +129,76 @@
       socket.emit('moderator_action', { id, action: 'approved', password });
     }
 
+    // Unapprove a question
+    function unapprove(id) {
+      socket.emit('moderator_action', { id, action: 'unapprove', password });
+    }
+
     // delete a question
     function delete_question(id) {
       socket.emit('moderator_action', { id, action: 'questiondeleted', password });
     }
 
-    // Change the sort order
-    function changeSort(order) {
-      currentSort = order;
-      socket.emit('request_questions'); // Request the latest questions from the server
+    // Archive a question
+    function archive_question(id) {
+      socket.emit('moderator_action', { id, action: 'archive', password });
     }
 
-    
+    // Change the sort order
+    function changeSort(order) {
+      currentSort = order; // Update the current sort order
+      socket.emit('request_questions', { sortBy: currentSort }); // Request sorted questions from the server
+    }
+  </script>
+
+  <!-- Toggle Archived Questions Button -->
+  <button id="toggle-archived" onclick="toggleArchivedQuestions()">Show Archived Questions</button>
+
+  <!-- Archived Questions Section -->
+  <div id="archived-questions" style="display: none; margin-top: 20px;">
+    <h3>Archived Questions</h3>
+    <div id="archived-questions-list"></div>
+  </div>
+
+  <script>
+    let archivedVisible = false;
+
+    function toggleArchivedQuestions() {
+      const archivedContainer = document.getElementById('archived-questions');
+      const toggleButton = document.getElementById('toggle-archived');
+
+      if (archivedVisible) {
+        archivedContainer.style.display = 'none';
+        toggleButton.textContent = 'Show Archived Questions';
+      } else {
+        // Fetch archived questions from the server when showing the list
+        socket.emit('request_archived_questions');
+        archivedContainer.style.display = 'block';
+        toggleButton.textContent = 'Hide Archived Questions';
+      }
+
+      archivedVisible = !archivedVisible;
+    }
+
+    socket.on('archived_questions', (questions) => {
+      const container = document.getElementById('archived-questions-list');
+      container.innerHTML = '';
+
+      questions.forEach((q) => {
+        const div = document.createElement('div');
+        div.className = 'archived-question';
+        div.innerHTML = `
+          <div>${q.text}</div>
+          <div class="archived-date">Archived on: ${new Date(q.archived_at).toLocaleString()}</div>
+          <button onclick="unarchiveQuestion('${q.id}')">Unarchive</button>
+        `;
+        container.appendChild(div);
+      });
+    });
+
+    function unarchiveQuestion(id) {
+      socket.emit('moderator_action', { id, action: 'unarchive', password });
+    }
   </script>
 </body>
 </html>

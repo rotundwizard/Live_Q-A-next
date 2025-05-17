@@ -28,6 +28,14 @@ db.serialize(() => {
     socket_id TEXT,
     PRIMARY KEY (question_id, socket_id)
   )`);
+  db.run(`CREATE TABLE IF NOT EXISTS archived_questions (
+    id TEXT PRIMARY KEY,
+    username TEXT,
+    text TEXT NOT NULL,
+    status TEXT NOT NULL,
+    upvotes INTEGER DEFAULT 0,
+    archived_at INTEGER
+  )`);
 });
 
 // Add an endpoint to fetch sorted questions
@@ -147,7 +155,80 @@ io.on('connection', (socket) => {
           });
         }
       });
-    } else {
+    } 
+    
+    else if (action === 'archive') {
+      // Move the question to the archived_questions table
+      db.get("SELECT * FROM questions WHERE id = ?", [id], (err, question) => {
+        if (!err && question) {
+          const archivedAt = Date.now();
+          db.run(
+            `INSERT INTO archived_questions (id, username, text, status, upvotes, archived_at) VALUES (?, ?, ?, ?, ?, ?)`,
+            [question.id, question.username, question.text, question.status, question.upvotes, archivedAt],
+            (err) => {
+              if (!err) {
+                // Delete the question from the questions table
+                db.run("DELETE FROM questions WHERE id = ?", [id], (err) => {
+                  if (!err) {
+                    // Emit the updated list of all questions to moderators
+                    db.all("SELECT * FROM questions", [], (err, rows) => {
+                      if (!err) io.to('moderators').emit('all_questions', rows);
+                    });
+                    // Emit the updated list of archived questions
+                    db.all("SELECT * FROM archived_questions", [], (err, rows) => {
+                      if (!err) socket.emit('archived_questions', rows);
+                    });
+                  }
+                });
+              }
+            }
+          );
+        }
+      });
+    } 
+    else if (action === 'unarchive') {
+      // Fetch the question from the archived_questions table
+      db.get("SELECT * FROM archived_questions WHERE id = ?", [id], (err, question) => {
+        if (!err && question) {
+          // Insert the question back into the questions table
+          db.run(
+            `INSERT INTO questions (id, username, text, status, upvotes, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+            [question.id, question.username, question.text, 'submitted', question.upvotes, Date.now()],
+            (err) => {
+              if (!err) {
+                // Delete the question from the archived_questions table
+                db.run("DELETE FROM archived_questions WHERE id = ?", [id], (err) => {
+                  if (!err) {
+                    // Emit the updated archived questions list
+                    db.all("SELECT * FROM archived_questions", [], (err, rows) => {
+                      if (!err) socket.emit('archived_questions', rows);
+                    });
+  
+                    // Emit the updated all questions list to moderators
+                    db.all("SELECT * FROM questions", [], (err, rows) => {
+                      if (!err) io.to('moderators').emit('all_questions', rows);
+                    });
+                  }
+                });
+              }
+            }
+          );
+        }
+      });
+    }
+
+    else if (action === 'unapprove') {
+      db.run("UPDATE questions SET status = 'submitted' WHERE id = ?", [id], (err) => {
+        if (!err) {
+          // Emit the updated list of all questions to moderators
+          db.all("SELECT * FROM questions", [], (err, rows) => {
+            if (!err) io.to('moderators').emit('all_questions', rows);
+          });
+        }
+      });
+    }
+    
+    else {
       db.run("UPDATE questions SET status = ? WHERE id = ?", [action, id]);
     }
 
@@ -176,9 +257,27 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('request_questions', () => {
-    db.all("SELECT * FROM questions", [], (err, rows) => {
-      if (!err) socket.emit('all_questions', rows);
+  socket.on('request_questions', ({ sortBy }) => {
+    let orderByClause = 'created_at DESC'; // Default: sort by recency
+    if (sortBy === 'votes') {
+      orderByClause = 'upvotes DESC';
+    } else if (sortBy === 'approved') {
+      orderByClause = "CASE WHEN status = 'approved' THEN 1 ELSE 2 END, created_at DESC";
+    }
+
+    db.all(`SELECT * FROM questions ORDER BY ${orderByClause}`, [], (err, rows) => {
+      if (!err) {
+        socket.emit('all_questions', rows); // Send the sorted questions back to the client
+      }
+    });
+  });
+
+  // display archived questions to moderators when button is clicked
+  socket.on('request_archived_questions', () => {
+    db.all("SELECT * FROM archived_questions", [], (err, rows) => {
+      if (!err) {
+        socket.emit('archived_questions', rows);
+      }
     });
   });
 });
