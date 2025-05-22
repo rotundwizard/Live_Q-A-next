@@ -1,6 +1,6 @@
 <!-- filepath: /Users/chris/Documents/Github/Live_Q-A/public/moderator.html -->
 <!DOCTYPE html>
-<html lang="en">
+ <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -27,8 +27,7 @@
     }
     .buttons button {
       margin-right: 5px; /* Add spacing between buttons */
-    }
-    .approved {color: green; font-weight: bold;}
+    }  
     .live {background-color: yellow;}
     #archived-questions {
       border: 1px solid #ccc;
@@ -49,6 +48,21 @@
 </head>
 <body>
   <h1>Moderator Panel</h1>
+  <button id="configure-event-button" onclick="toggleConfigureEvent()">Configure Event</button>
+
+  <div id="configure-event" style="display: none; margin-top: 20px; border: 1px solid #ccc; padding: 10px;">
+    <h3>Event Configuration</h3>
+    <label for="event-name">Event Name:</label>
+    <input type="text" id="event-name" placeholder="Enter event name"><br><br>
+
+    <label for="IP-address">Max Questions:</label>
+    <input type="text" id="ip-address" placeholder="Example: 01.02.03.04"><br><br>
+
+    <label for="event-length">Event Password:</label>
+    <input type="number" id="event-length" placeholder="Length in hours (e.g. 2)"><br><br>
+
+    <button onclick="saveEventConfig()">Save Configuration</button>
+  </div>
 
   <!-- Add sorting buttons -->
   <div id="sorting-controls">
@@ -82,6 +96,7 @@
       questions.forEach((q) => {
         const div = document.createElement('div');
         div.className = 'question';
+        div.setAttribute('data-id', q.id); // Add a data-id attribute
 
         // Add styles for live and approved questions
         if (q.status === 'live') {
@@ -96,13 +111,14 @@
         if (q.status === 'live') {
           buttons = `
             <div class="buttons">
+              <button onclick="cancelLive('${q.id}')">Cancel</button>
               <button onclick="archive_question('${q.id}')">Archive</button>
             </div>
           `;
         } else {
           buttons = `
             <div class="buttons">
-              <button onclick="markAsLive('${q.id}')">Mark as Live</button>
+              <button onclick="markAsLive('${q.id}')">Live</button>
               ${q.status === 'approved' 
                 ? `<button onclick="unapprove('${q.id}')">Unapprove</button>` 
                 : `<button onclick="approve('${q.id}')">Approve</button>`}
@@ -112,7 +128,7 @@
         }
 
         div.innerHTML = `
-          <div class="question-text">${q.text} | ${q.upvotes}</div>
+          <div class="question-text">${q.text} | <span class="vote-count">Votes: ${q.upvotes}</span></div>
           ${buttons}
         `;
         container.appendChild(div);
@@ -122,6 +138,11 @@
     // Mark a question as live
     function markAsLive(id) {
       socket.emit('moderator_action', { id, action: 'live', password });
+    }
+
+    // Cancel live status
+    function cancelLive(id) {
+      socket.emit('moderator_action', { id, action: 'cancel_live', password });
     }
 
     // Approve a question
@@ -148,6 +169,43 @@
     function changeSort(order) {
       currentSort = order; // Update the current sort order
       socket.emit('request_questions', { sortBy: currentSort }); // Request sorted questions from the server
+    }
+
+    // Update vote count in real-time
+    socket.on('update_vote', (updatedQuestion) => {
+      // Find the question element in the DOM
+      const questionElement = document.querySelector(`.question[data-id="${updatedQuestion.id}"]`);
+      if (questionElement) {
+        // Update the vote count in the DOM
+        const voteCountElement = questionElement.querySelector('.vote-count');
+        if (voteCountElement) {
+          voteCountElement.textContent = `Votes: ${updatedQuestion.upvotes}`;
+        }
+      }
+    });
+
+    // Toggle Configure Event Section
+    function toggleConfigureEvent() {
+      const configDiv = document.getElementById('configure-event');
+      const button = document.getElementById('configure-event-button');
+
+      if (configDiv.style.display === 'none') {
+        configDiv.style.display = 'block';
+        button.textContent = 'Close Configuration';
+      } else {
+        configDiv.style.display = 'none';
+        button.textContent = 'Configure Event';
+      }
+    }
+
+    // Save Event Configuration
+    function saveEventConfig() {
+      const eventName = document.getElementById('event-name').value;
+      const IPaddress = document.getElementById('IP-address').value;
+      const eventLength = document.getElementById('event-length').value;
+
+      socket.emit('save_event_config', { eventName, IPaddress, eventLength });
+      alert('Event configuration saved!');
     }
   </script>
 

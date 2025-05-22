@@ -53,9 +53,22 @@
         user.textContent = question.username ? `- ${question.username}` : '- Anonymous';
         display.textContent = question.text;
       } else {
+        // Clear the live question display and show the participant view URL
         user.textContent = '';
-        display.textContent = 'Waiting for a live question...';
+        const participantUrl = `http://${window.location.hostname}:3000`; // Replace 3000 with your server's port
+        display.innerHTML = `
+          Waiting for a live question...<br>
+          <span style="font-size: 0.8em; color: #ccc;">Visit <a href="${participantUrl}" target="_blank" style="color: #4caf50;">${participantUrl}</a> to submit your questions.</span>
+        `;
       }
+    });
+
+    socket.on('network_ip', (networkIP) => {
+      const participantUrl = `http://${networkIP}:3000`; // Use the network IP from the server
+      display.innerHTML = `
+        Waiting for a live question...<br>
+        <span style="font-size: 0.8em; color: #ccc;">Visit <a href="${participantUrl}" target="_blank" style="color: #4caf50;">${participantUrl}</a> to submit your questions.</span>
+      `;
     });
   </script>
 </body>

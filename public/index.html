@@ -12,13 +12,14 @@
 
 </head>
 <body>
-  <h1>Live Q&A</h1>
+  <h1>VBC Youth Q&A</h1>
+  <p>To submit a question, just enter a name (optional) and your question and then click the submit button. After review, you should see your question along with the questions of other students appear in the "Your Questions" list. If you see a question you are also interested in, just click the vote button under it.</p>
 
   <div id="participant">
+    <textarea id="question" placeholder="Your question..." rows="6" cols="40"></textarea><br>
     <input id="username" placeholder="Enter your name (optional)">
-    <textarea id="question" placeholder="Your question..."></textarea><br>
     <button onclick="submitQuestion()">Submit</button>
-    <h2>Approved Questions</h2>
+    <h2>Your Questions</h2>
     <div id="questions"></div>
   </div>
 
@@ -45,16 +46,45 @@
       updateQuestionList(questions);
     });
 
+    socket.on('question_upvoted', (questions) => {
+      questions.forEach((updatedQuestion) => {
+        // Find the question element in the DOM using its unique ID
+        const questionElement = document.querySelector(`.question[data-id="${updatedQuestion.id}"]`);
+        if (questionElement) {
+          // Update the vote count in the DOM
+          const voteCountElement = questionElement.querySelector('.vote-count');
+          if (voteCountElement) {
+            voteCountElement.textContent = `Votes: ${updatedQuestion.upvotes}`;
+          }
+        } else {
+          // If the question is not in the DOM, add it (e.g., newly approved question)
+          const container = document.getElementById('questions');
+          const div = document.createElement('div');
+          div.className = 'question';
+          div.setAttribute('data-id', updatedQuestion.id);
+          div.innerHTML = `
+            <span>${updatedQuestion.text} | <span class="vote-count">Votes: ${updatedQuestion.upvotes}</span></span>
+            <button onclick="vote('${updatedQuestion.id}')">Vote</button>
+          `;
+          container.appendChild(div);
+        }
+      });
+
+      // Refresh the list of approved questions
+      socket.emit('request_approved_questions');
+    });
+
     // Update the list of approved questions
     function updateQuestionList(questions) {
       const container = document.getElementById('questions');
-      container.innerHTML = '';
+      container.innerHTML = ''; // Clear the current list
 
       questions.forEach((q) => {
         const div = document.createElement('div');
         div.className = 'question';
+        div.setAttribute('data-id', q.id); // Add a unique identifier for the question
         div.innerHTML = `
-          <span>${q.text} | ${q.upvotes}</span>
+          <span>${q.text} | <span class="vote-count">Votes: ${q.upvotes}</span></span>
           ${q.username !== username && !votedQuestions.has(q.id) ? 
             `<button onclick="vote('${q.id}')">Vote</button>` : ''}
         `;
@@ -65,7 +95,7 @@
     // Vote for a question
     function vote(id) {
       if (!votedQuestions.has(id)) {
-        socket.emit('upvote', id);
+        socket.emit('upvote', id); // Emit the upvote event to the server
         votedQuestions.add(id); // Mark the question as voted
         updateQuestionList([...document.querySelectorAll('.question')].map(div => ({
           id: div.querySelector('button')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1],
@@ -75,11 +105,6 @@
         })));
       }
     }
-
-    // Approve a question
-//    function approveQuestion(id) {
-//      db.run("UPDATE questions SET status = 'approved' WHERE id = ?", [id]);
-//    }
   </script>
 </body>
 </html>

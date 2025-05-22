@@ -4,6 +4,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const { v4: uuidv4 } = require('uuid');
 const sqlite3 = require('sqlite3').verbose();
+const os = require('os'); // Added os module
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
@@ -38,6 +39,19 @@ db.serialize(() => {
   )`);
 });
 
+// Function to get the local network IP address
+function getLocalNetworkIP() {
+  const interfaces = os.networkInterfaces();
+  for (const name in interfaces) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address; // Return the first non-internal IPv4 address
+      }
+    }
+  }
+  return 'localhost'; // Fallback to localhost if no network IP is found
+}
+
 // Add an endpoint to fetch sorted questions
 app.get('/questions', (req, res) => {
   const { sortBy } = req.query;
@@ -71,6 +85,9 @@ app.get('/moderator', (req, res) => {
 // WebSocket logic
 io.on('connection', (socket) => {
   console.log('a user connected:', socket.id);
+
+  const networkIP = getLocalNetworkIP(); // Get the local network IP
+  socket.emit('network_ip', networkIP); // Emit the network IP to the client
 
   db.all("SELECT * FROM questions WHERE status = 'approved'", [], (err, rows) => {
     if (!err) socket.emit('approved_questions', rows);
@@ -227,6 +244,20 @@ io.on('connection', (socket) => {
         }
       });
     }
+
+    else if (action === 'cancel_live') {
+      db.run("UPDATE questions SET status = 'approved' WHERE id = ?", [id], (err) => {
+        if (!err) {
+          // Emit the updated list of all questions to moderators
+          db.all("SELECT * FROM questions", [], (err, rows) => {
+            if (!err) io.to('moderators').emit('all_questions', rows);
+          });
+
+          // Notify the live view that there is no active live question
+          io.emit('live_question', null);
+        }
+      });
+    }
     
     else {
       db.run("UPDATE questions SET status = ? WHERE id = ?", [action, id]);
@@ -239,15 +270,19 @@ io.on('connection', (socket) => {
   });
 
   socket.on('upvote', (questionId) => {
-    // prevent upvoting own question or multiple votes
+    // Prevent upvoting own question or multiple votes
     db.get("SELECT * FROM questions WHERE id = ?", [questionId], (err, question) => {
       if (!err && question && question.status === 'approved') {
         db.get("SELECT * FROM votes WHERE question_id = ? AND socket_id = ?", [questionId, socket.id], (err, row) => {
           if (!row) {
             db.run("INSERT INTO votes (question_id, socket_id) VALUES (?, ?)", [questionId, socket.id], () => {
               db.run("UPDATE questions SET upvotes = upvotes + 1 WHERE id = ?", [questionId], () => {
-                db.all("SELECT * FROM questions WHERE status = 'approved'", [], (err, rows) => {
-                  if (!err) io.emit('approved_questions', rows);
+                // Emit the updated question to participants
+                db.get("SELECT * FROM questions WHERE id = ?", [questionId], (err, updatedQuestion) => {
+                  if (!err) {
+                    io.emit('question_upvoted', [updatedQuestion]); // Send updated question to participants
+                    io.to('moderators').emit('update_vote', updatedQuestion); // Send updated question to moderators
+                  }
                 });
               });
             });
@@ -277,6 +312,14 @@ io.on('connection', (socket) => {
     db.all("SELECT * FROM archived_questions", [], (err, rows) => {
       if (!err) {
         socket.emit('archived_questions', rows);
+      }
+    });
+  });
+
+  socket.on('request_approved_questions', () => {
+    db.all("SELECT * FROM questions WHERE status = 'approved'", [], (err, rows) => {
+      if (!err) {
+        socket.emit('approved_questions', rows); // Send the updated list of approved questions
       }
     });
   });
