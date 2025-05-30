@@ -132,6 +132,7 @@
 
         div.innerHTML = `
           <div class="question-text">${q.text} | <span class="vote-count">Votes: ${q.upvotes}</span></div>
+          <div class="username">Submitted by: ${q.username}</div>
           ${buttons}
         `;
         container.appendChild(div);
@@ -222,7 +223,7 @@
     }
 
     function loadEventConfig() {
-      const modeventName = localStorage.getItem('modeventName') || 'Default Event Name';
+      const modeventName = localStorage.getItem('modeventName') || 'VBC Live Event';
       const modeventURL = localStorage.getItem('modeventURL') || 'e.g. 10.10.20.20';
       const modeventDatetime = localStorage.getItem('modeventDatetime') || '';
 

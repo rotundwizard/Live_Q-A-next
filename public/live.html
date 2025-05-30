@@ -62,27 +62,46 @@
     const eventName = document.getElementById('event-name');
     const eventUrl = document.getElementById('event-url');
 
+    let currentEventName = 'VBC Live Event'; // Default event name
+    let currentEventURL = 'Event URL: Not Set'; // Default event URL
+
     socket.on('live_question', (question) => {
+      const eventNameContainer = document.getElementById('event-name');
+      const eventUrlContainer = document.getElementById('event-url');
+
       if (question) {
+        // Display the live question and username
         user.textContent = question.username ? `- ${question.username}` : '- Anonymous';
         display.textContent = question.text;
+
+        // Hide Event Name and Event URL
+        eventNameContainer.style.display = 'none';
+        eventUrlContainer.style.display = 'none';
       } else {
         // Clear the live question display and show the participant view URL
         user.textContent = '';
         display.textContent = 'Waiting for a live question...';
-        eventName.textContent = 'Event Name: Not Set';
-        eventUrl.textContent = 'Event URL: Not Set';
+
+        // Show Event Name and Event URL
+        eventNameContainer.style.display = 'block';
+        eventUrlContainer.style.display = 'block';
+
+        // Restore the stored values for Event Name and Event URL
+        eventName.textContent = currentEventName;
+        eventUrl.textContent = currentEventURL;
       }
     });
 
     // Listen for event name updates
     socket.on('event_name_updated', ({ eventName: updatedEventName }) => {
+      currentEventName = updatedEventName; // Update the stored value
       eventName.textContent = `${updatedEventName}`;
     });
 
     // Listen for event URL updates
     socket.on('event_ip_updated', ({ eventURL }) => {
-      eventUrl.textContent = `To submit questions, please visit ${eventURL}`;
+      currentEventURL = `To submit questions, please visit ${eventURL}`; // Update the stored value
+      eventUrl.textContent = currentEventURL;
     });
 
   </script>
