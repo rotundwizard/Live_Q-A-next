@@ -1,14 +1,14 @@
-version: '3.8'
+  version: '3.8'
 
-services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000" # Map port 3000 on the host to port 3000 in the container
-    volumes:
-      - .:/app # Mount the current directory into the container
-      - ./questions.db:/app/questions.db # Persist the SQLite database
-    environment:
-      - MODERATOR_PASSWORD=mod123 # Pass environment
+  services:
+    VBC_LiveQA:
+      build:
+        context: .
+        dockerfile: Dockerfile
+      ports:
+        - "3000:3000" # Map port 3000 on the host to port 3000 in the container
+      volumes:
+        - .:/app # Mount the current directory into the container
+        - ./questions.db:/app/questions.db # Persist the SQLite database
+      environment:
+        - MODERATOR_PASSWORD=mod123 # Pass environment
