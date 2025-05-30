@@ -44,12 +44,14 @@
 </head>
 <body>
   <div id="live-question-container">
+    <div id="qr-code-container" style="margin-bottom: 20px;"></div>
     <div id="live-question">Waiting for a live question...</div>
     <div id="username"></div>
     <div id="event-name">VBC Live Event</div>
     <div id="event-url">Event URL: Not Set</div>
   </div>
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/AdditionalLibraries/qrcode.js"></script>
   <script>
     // Test for Connection
     const socket = io('http://localhost:3000'); // Replace 3000 with your server's port
@@ -61,6 +63,7 @@
     const user = document.getElementById('username');
     const eventName = document.getElementById('event-name');
     const eventUrl = document.getElementById('event-url');
+    const qrCodeContainer = document.getElementById('qr-code-container');
 
     let currentEventName = 'VBC Live Event'; // Default event name
     let currentEventURL = 'Event URL: Not Set'; // Default event URL
@@ -77,6 +80,7 @@
         // Hide Event Name and Event URL
         eventNameContainer.style.display = 'none';
         eventUrlContainer.style.display = 'none';
+        qrCodeContainer.style.display = 'none';
       } else {
         // Clear the live question display and show the participant view URL
         user.textContent = '';
@@ -85,6 +89,7 @@
         // Show Event Name and Event URL
         eventNameContainer.style.display = 'block';
         eventUrlContainer.style.display = 'block';
+        qrCodeContainer.style.display = 'block';
 
         // Restore the stored values for Event Name and Event URL
         eventName.textContent = currentEventName;
@@ -92,6 +97,21 @@
       }
     });
 
+    function generateQRCode(url) {
+      // Clear any existing QR code
+      qrCodeContainer.innerHTML = '';
+
+      // Generate a new QR code
+      new QRCode(qrCodeContainer, {
+        text: url,
+        width: 128, // Width of the QR code
+        height: 128, // Height of the QR code
+        colorDark: "#000000", // Dark color
+        colorLight: "#ffffff", // Light color
+        correctLevel: QRCode.CorrectLevel.H // Error correction level
+      });
+    }
+    
     // Listen for event name updates
     socket.on('event_name_updated', ({ eventName: updatedEventName }) => {
       currentEventName = updatedEventName; // Update the stored value
@@ -102,6 +122,7 @@
     socket.on('event_ip_updated', ({ eventURL }) => {
       currentEventURL = `To submit questions, please visit ${eventURL}`; // Update the stored value
       eventUrl.textContent = currentEventURL;
+      generateQRCode(eventURL); // Generate QR code for the event URL
     });
 
   </script>
