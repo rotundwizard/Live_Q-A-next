@@ -360,6 +360,28 @@ io.on('connection', (socket) => {
   // Send the current event configuration to participants when they connect
   socket.emit('event_name_updated', { eventName: currentEventName });
   socket.emit('event_datetime_updated', { eventDatetime: currentEventDatetime });
+
+  socket.on('request_export_data', () => {
+    const questionsQuery = `SELECT * FROM questions`;
+    const archivedQuestionsQuery = `SELECT * FROM archived_questions`;
+
+    db.all(questionsQuery, [], (err, questions) => {
+      if (err) {
+        console.error('Error fetching questions:', err);
+        return;
+      }
+
+      db.all(archivedQuestionsQuery, [], (err, archivedQuestions) => {
+        if (err) {
+          console.error('Error fetching archived questions:', err);
+          return;
+        }
+
+        // Send the data back to the client
+        socket.emit('export_data', { questions, archivedQuestions });
+      });
+    });
+  });
 });
 
 server.listen(3000, () => {

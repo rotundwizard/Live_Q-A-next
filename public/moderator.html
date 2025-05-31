@@ -235,6 +235,55 @@
 
     // Call loadEventConfig when the page loads
     window.onload = loadEventConfig;
+
+    function exportQuestions() {
+      // Fetch all questions and archived questions from the server
+      socket.emit('request_export_data');
+
+      // Listen for the server response
+      socket.on('export_data', ({ questions, archivedQuestions }) => {
+        // Combine questions and archived questions into a single array
+        const allQuestions = [
+          ...questions.map(q => ({
+            id: q.id,
+            username: q.username || 'Anonymous',
+            text: q.text,
+            status: q.status,
+            upvotes: q.upvotes,
+            created_at: new Date(q.created_at).toLocaleString(),
+          })),
+          ...archivedQuestions.map(q => ({
+            id: q.id,
+            username: q.username || 'Anonymous',
+            text: q.text,
+            status: q.status,
+            upvotes: q.upvotes,
+            created_at: new Date(q.created_at).toLocaleString(),
+            archived_at: new Date(q.archived_at).toLocaleString(),
+          })),
+        ];
+
+        // Convert the data to CSV format
+        const csvContent = convertToCSV(allQuestions);
+
+        // Create a downloadable link for the CSV file
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'questions_export.csv';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      });
+    }
+
+    // Helper function to convert data to CSV format
+    function convertToCSV(data) {
+      const headers = Object.keys(data[0]).join(','); // Extract headers from the first object
+      const rows = data.map(row => Object.values(row).join(',')); // Convert each object to a CSV row
+      return [headers, ...rows].join('\n'); // Combine headers and rows into a single CSV string
+    }
   </script>
 
   <!-- Toggle Archived Questions Button -->
@@ -242,6 +291,7 @@
 
   <!-- Archived Questions Section -->
   <div id="archived-questions" style="display: none; margin-top: 20px;">
+
     <h3>Archived Questions</h3>
     <div id="archived-questions-list"></div>
   </div>
@@ -286,5 +336,11 @@
       socket.emit('moderator_action', { id, action: 'unarchive', password });
     }
   </script>
+
+  <!-- Export Questions Button -->
+  <div id="export-controls" style="margin-top: 20px;">
+    <button onclick="exportQuestions()">Export Questions</button>
+  </div>
+  
 </body>
 </html>

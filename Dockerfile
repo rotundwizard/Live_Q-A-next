@@ -1,20 +1,16 @@
-# Use Node.js image
-FROM node:16
+# Stage 1: Build
+FROM node:24-alpine AS builder
 
-# Create and set the working directory
 WORKDIR /app
-
-# Copy package.json and package-lock.json
 COPY package*.json ./
-
-# Install dependencies
-RUN npm install
-
-# Copy the rest of the application
+RUN npm install --production
 COPY . .
 
-# Expose the app on port 3000
-EXPOSE 3000
+# Stage 2: Runtime
+FROM node:24-alpine
 
-# Start the server
+WORKDIR /app
+COPY --from=builder /app ./
+
+EXPOSE 3000
 CMD ["node", "server.js"]
