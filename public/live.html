@@ -21,40 +21,52 @@
       align-items: center; /* Center children horizontally */
     }
     #live-question {
-      font-size: 2em;
+      font-size: calc(2vh + 2vmin + 2vw);
       color: white;
       padding: 20px;
     }
     #username {
       font-style: italic;
+      font-size: calc(1vh + 1vmin + 1vw);
       color: #e7ff2e;
       margin-top: 10px;
     }
     #event-name {
-      font-size: 1.5em;
+      font-size: calc(2vh + 2vmin + 1vw);
       color: #ffffff;
       margin-top: 20px;
     }
     #event-url {
-      font-size: 1.2em;
+      font-size: calc(1.5vh + 1.5vmin + 1.5vw);
       color: #ffffff;
       margin-top: 10px;
+    }
+
+    #qr-code-container img {
+      width: 50vw; /* 20% of viewport width */
+      height: auto; /* Maintain aspect ratio */
+      max-width: 100%; /* Ensure it doesn't exceed 100% of the parent container */
+      max-height: 50vh; /* Ensure it doesn't exceed 20% of the viewport height */
+      /* You can also use max-width and max-height as a percentage of the parent container */
+      /* max-width: 50%; */
+      /* max-height: 50%; */
+      object-fit: contain; /* Maintain aspect ratio and fit within the container */
     }
   </style>
 </head>
 <body>
   <div id="live-question-container">
     <div id="qr-code-container" style="margin-bottom: 20px;"></div>
-    <div id="live-question">Waiting for a live question...</div>
-    <div id="username"></div>
     <div id="event-name">VBC Live Event</div>
+    <div id="live-question"></div>
+    <div id="username"></div>
     <div id="event-url">Event URL: Not Set</div>
   </div>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/AdditionalLibraries/qrcode.js"></script>
   <script>
     // Test for Connection
-    const socket = io('http://10.10.100.40:3000'); // Replace 3000 with your server's port
+    const socket = io();
     socket.on('connect', () => {
       console.log('Connected to server:', socket.id);
     });
@@ -71,6 +83,8 @@
     socket.on('live_question', (question) => {
       const eventNameContainer = document.getElementById('event-name');
       const eventUrlContainer = document.getElementById('event-url');
+      const liveQuestionContainer = document.getElementById('live-question');
+      const usernameContainer = document.getElementById('username');
 
       if (question) {
         // Display the live question and username
@@ -81,15 +95,23 @@
         eventNameContainer.style.display = 'none';
         eventUrlContainer.style.display = 'none';
         qrCodeContainer.style.display = 'none';
+
+        // Show live question and username
+        liveQuestionContainer.style.display = 'block';
+        usernameContainer.style.display = 'block';
       } else {
         // Clear the live question display and show the participant view URL
         user.textContent = '';
-        display.textContent = 'Waiting for a live question...';
+        display.textContent = '';
 
         // Show Event Name and Event URL
         eventNameContainer.style.display = 'block';
         eventUrlContainer.style.display = 'block';
         qrCodeContainer.style.display = 'block';
+
+        // Hide live question and username
+        liveQuestionContainer.style.display = 'none';
+        usernameContainer.style.display = 'none';
 
         // Restore the stored values for Event Name and Event URL
         eventName.textContent = currentEventName;
@@ -97,34 +119,58 @@
       }
     });
 
+    // Load values from localStorage on initial page load
+    window.addEventListener('load', () => {
+      const storedEventName = localStorage.getItem('live_eventName');
+      const storedEventURL = localStorage.getItem('live_eventIP');
+
+      // If values exist in localStorage, update the DOM
+      if (storedEventName) {
+        currentEventName = storedEventName; // Update the stored value
+        eventName.textContent = currentEventName; // Update the DOM
+      }
+
+      if (storedEventURL) {
+        currentEventURL = storedEventURL; // Update the stored value
+        eventUrl.textContent = `To submit questions, please visit ${storedEventURL}`; // Update the DOM
+        generateQRCode(currentEventURL); // Generate QR code for the stored URL
+      }
+    });
+
+    // Listen for event name updates and save to localStorage
+    socket.on('event_name_updated', ({ eventName: updatedEventName }) => {
+      currentEventName = updatedEventName; // Update the stored value
+      eventName.textContent = currentEventName; // Update the DOM
+      localStorage.setItem('live_eventName', currentEventName); // Save the updated value to localStorage
+    });
+
+    // Listen for event URL updates and save to localStorage
+    socket.on('event_ip_updated', ({ eventURL }) => {
+      currentEventURL = eventURL; // Store the raw URL
+      eventUrl.textContent = `To submit questions, please visit ${eventURL}`; // Update the DOM with the concatenated string
+      localStorage.setItem('live_eventIP', currentEventURL); // Save the raw URL to localStorage
+      generateQRCode(currentEventURL); // Generate QR code for the raw URL
+    });
+
+    // Function to generate a QR code
     function generateQRCode(url) {
+      // debugging - log the URL being used for QR code generation
+      console.log('Generating QR code for URL:', url);
+
       // Clear any existing QR code
       qrCodeContainer.innerHTML = '';
 
       // Generate a new QR code
       new QRCode(qrCodeContainer, {
-        text: url,
-        width: 128, // Width of the QR code
-        height: 128, // Height of the QR code
+        text: url, // Use the provided URL
+        width: 512, // Width of the QR code
+        height: 512, // Height of the QR code
         colorDark: "#000000", // Dark color
         colorLight: "#ffffff", // Light color
-        correctLevel: QRCode.CorrectLevel.H // Error correction level
+        correctLevel: QRCode.CorrectLevel.L // Error correction level
       });
     }
     
-    // Listen for event name updates
-    socket.on('event_name_updated', ({ eventName: updatedEventName }) => {
-      currentEventName = updatedEventName; // Update the stored value
-      eventName.textContent = `${updatedEventName}`;
-    });
-
-    // Listen for event URL updates
-    socket.on('event_ip_updated', ({ eventURL }) => {
-      currentEventURL = `To submit questions, please visit ${eventURL}`; // Update the stored value
-      eventUrl.textContent = currentEventURL;
-      generateQRCode(eventURL); // Generate QR code for the event URL
-    });
-
   </script>
 </body>
 </html>

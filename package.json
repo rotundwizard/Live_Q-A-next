@@ -1,6 +1,6 @@
 {
   "name": "live-qa-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A self-hostable real-time Q&A web app for live events with moderator and participant roles.",
   "main": "server.js",
   "scripts": {

@@ -14,7 +14,7 @@ const MODERATOR_PASSWORD = process.env.MODERATOR_PASSWORD || 'mod123';
 app.use(express.json());
 app.use(express.static('public'));
 
-const db = new sqlite3.Database('./questions.db');
+const db = new sqlite3.Database('./database/questions.db');
 
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS questions (
