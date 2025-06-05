@@ -6,7 +6,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Moderator Panel</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: linear-gradient(to right, #0F181B, #0D2734); /* Gradient from left to right */
+      color: #D7E5D9; /* Light text color */
+    }
+
+    button {
+      background-color: #D7E5D9;
+      color: #0D2734; /* Dark text */
+      border: none; /* Remove border */
+      padding: 10px 20px; /* Add padding */
+      text-align: center; /* Center text */
+      text-decoration: none; /* Remove underline */
+      display: inline-block; /* Inline-block for layout */
+      font-size: 1em; /* Font size */
+      margin: 5px 0; /* Add margin */
+      cursor: pointer; /* Pointer cursor on hover */
+      border-radius: 0; /* Rounded corners */
+      transition: background-color 0.3s ease; /* Smooth hover effect */
+    }
+
+    button:hover {
+      background-color: #D7E5D9; /* Light background on hover */
+    }
+
     #sorting-controls {
       margin-bottom: 20px; /* Add spacing below the sorting controls */
     }
@@ -28,7 +53,16 @@
     .buttons button {
       margin-right: 5px; /* Add spacing between buttons */
     }  
-    .live {background-color: yellow;}
+    .live {
+      color:#0F181B;
+      background-color: yellow;
+    }
+
+    .approved {
+      font-weight: bold;
+      background-color:#235b61; /* Light background for approved questions */
+    }
+
     #archived-questions {
       border: 1px solid #ccc;
       padding: 10px;
@@ -166,6 +200,7 @@
 
     // Archive a question
     function archive_question(id) {
+      socket.emit('moderator_action', { id, action: 'cancel_live', password });
       socket.emit('moderator_action', { id, action: 'archive', password });
     }
 
