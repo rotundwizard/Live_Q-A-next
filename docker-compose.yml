@@ -10,3 +10,9 @@ services:
       - liveqa_data:/app/database
     environment:
       - MODERATOR_PASSWORD=mod123 # Pass environment
+
+volumes:
+  liveqa_data:
+
+volumes:
+  liveqa_data:
