@@ -385,7 +385,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 const HOST = '0.0.0.0'; // Bind to all interfaces
 
 server.listen(PORT, HOST, () => {

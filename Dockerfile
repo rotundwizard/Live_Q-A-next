@@ -12,5 +12,5 @@ FROM node:24-alpine
 WORKDIR /app
 COPY --from=builder /app ./
 
-EXPOSE 3000
+EXPOSE 4000
 CMD ["node", "server.js"]
