@@ -1,5 +1,5 @@
 services:
-  VBC_LiveQA:
+  vbc_liveqa:
     build: .
     platform: linux/amd64
     ports:
