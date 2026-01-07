@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   VBC_LiveQA:
-    image: optionull/liveqa:latest # Replace with your Docker Hub repository
+    build: .
     platform: linux/amd64
     ports:
       - "3000:3000" # Map port 3000 on the host to port 3000 in the container
