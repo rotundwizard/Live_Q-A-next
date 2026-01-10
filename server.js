@@ -164,7 +164,7 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('moderator_action', ({ id, action, password, sortBy }) => {
+  socket.on('moderator_action', ({ id, action, password, sortBy, newText }) => {
     if (password !== MODERATOR_PASSWORD) return;
 
     const emitAllQuestions = () => {
@@ -268,17 +268,6 @@ io.on('connection', (socket) => {
       });
     }
 
-    else if (action === 'cancel_live') {
-      db.run("UPDATE questions SET status = 'approved' WHERE id = ?", [id], (err) => {
-        if (!err) {
-          emitAllQuestions();
-
-          // Notify the live view that there is no active live question
-          io.emit('live_question', null);
-        }
-      });
-    }
-    
     else if (action === 'cancel_live') {
       db.run("UPDATE questions SET status = 'approved' WHERE id = ?", [id], (err) => {
         if (!err) {
