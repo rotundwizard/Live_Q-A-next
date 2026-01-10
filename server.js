@@ -43,6 +43,18 @@ db.serialize(() => {
   )`);
 });
 
+// Function to get sorted questions
+function getSortedQuestions(sortBy, callback) {
+  let orderByClause = 'created_at DESC'; // Default: sort by recency
+  if (sortBy === 'votes') {
+    orderByClause = 'upvotes DESC';
+  } else if (sortBy === 'approved') {
+    orderByClause = "CASE WHEN status = 'approved' THEN 1 ELSE 2 END, created_at DESC";
+  }
+
+  db.all(`SELECT * FROM questions ORDER BY ${orderByClause}`, [], callback);
+}
+
 // Function to get the local network IP address
 function getLocalNetworkIP() {
   const interfaces = os.networkInterfaces();
@@ -152,16 +164,21 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('moderator_action', ({ id, action, password }) => {
+  socket.on('moderator_action', ({ id, action, password, sortBy }) => {
     if (password !== MODERATOR_PASSWORD) return;
+
+    const emitAllQuestions = () => {
+      getSortedQuestions(sortBy, (err, rows) => {
+        if (!err) {
+          io.to('moderators').emit('all_questions', rows);
+        }
+      });
+    };
 
     if (action === 'questiondeleted') {
       db.run("DELETE FROM questions WHERE id = ?", [id], (err) => {
         if (!err) {
-          // Emit the updated list of all questions to moderators
-          db.all("SELECT * FROM questions", [], (err, rows) => {
-            if (!err) io.emit('all_questions', rows);
-          });
+          emitAllQuestions();
         }
       });
     }
@@ -169,10 +186,7 @@ io.on('connection', (socket) => {
     else if (action === 'approved') {
       db.run("UPDATE questions SET status = 'approved' WHERE id = ?", [id], (err) => {
         if (!err) {
-          // Emit the updated list of all questions to moderators
-          db.all("SELECT * FROM questions", [], (err, rows) => {
-            if (!err) io.to('moderators').emit('all_questions', rows);
-          });
+          emitAllQuestions();
         }
       });
     }
@@ -184,13 +198,7 @@ io.on('connection', (socket) => {
           db.get("SELECT * FROM questions WHERE id = ?", [id], (err, row) => {
             if (!err) {
               io.emit('live_question', row); // Emit the live question to all clients
-
-              // Fetch the updated list of all questions
-              db.all("SELECT * FROM questions", [], (err, rows) => {
-                if (!err) {
-                  io.to('moderators').emit('all_questions', rows); // Emit the updated list of all questions to moderators
-                }
-              });
+              emitAllQuestions();
             }
           });
         }
@@ -210,10 +218,7 @@ io.on('connection', (socket) => {
                 // Delete the question from the questions table
                 db.run("DELETE FROM questions WHERE id = ?", [id], (err) => {
                   if (!err) {
-                    // Emit the updated list of all questions to moderators
-                    db.all("SELECT * FROM questions", [], (err, rows) => {
-                      if (!err) io.to('moderators').emit('all_questions', rows);
-                    });
+                    emitAllQuestions();
                     // Emit the updated list of archived questions
                     db.all("SELECT * FROM archived_questions", [], (err, rows) => {
                       if (!err) socket.emit('archived_questions', rows);
@@ -245,9 +250,7 @@ io.on('connection', (socket) => {
                     });
   
                     // Emit the updated all questions list to moderators
-                    db.all("SELECT * FROM questions", [], (err, rows) => {
-                      if (!err) io.to('moderators').emit('all_questions', rows);
-                    });
+                    emitAllQuestions();
                   }
                 });
               }
@@ -260,10 +263,7 @@ io.on('connection', (socket) => {
     else if (action === 'unapprove') {
       db.run("UPDATE questions SET status = 'submitted' WHERE id = ?", [id], (err) => {
         if (!err) {
-          // Emit the updated list of all questions to moderators
-          db.all("SELECT * FROM questions", [], (err, rows) => {
-            if (!err) io.to('moderators').emit('all_questions', rows);
-          });
+          emitAllQuestions();
         }
       });
     }
@@ -271,10 +271,7 @@ io.on('connection', (socket) => {
     else if (action === 'cancel_live') {
       db.run("UPDATE questions SET status = 'approved' WHERE id = ?", [id], (err) => {
         if (!err) {
-          // Emit the updated list of all questions to moderators
-          db.all("SELECT * FROM questions", [], (err, rows) => {
-            if (!err) io.to('moderators').emit('all_questions', rows);
-          });
+          emitAllQuestions();
 
           // Notify the live view that there is no active live question
           io.emit('live_question', null);
@@ -283,7 +280,11 @@ io.on('connection', (socket) => {
     }
     
     else {
-      db.run("UPDATE questions SET status = ? WHERE id = ?", [action, id]);
+      db.run("UPDATE questions SET status = ? WHERE id = ?", [action, id], (err) => {
+        if (!err) {
+          emitAllQuestions();
+        }
+      });
     }
 
     // Emit the updated list of approved questions
@@ -316,14 +317,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('request_questions', ({ sortBy }) => {
-    let orderByClause = 'created_at DESC'; // Default: sort by recency
-    if (sortBy === 'votes') {
-      orderByClause = 'upvotes DESC';
-    } else if (sortBy === 'approved') {
-      orderByClause = "CASE WHEN status = 'approved' THEN 1 ELSE 2 END, created_at DESC";
-    }
-
-    db.all(`SELECT * FROM questions ORDER BY ${orderByClause}`, [], (err, rows) => {
+    getSortedQuestions(sortBy, (err, rows) => {
       if (!err) {
         socket.emit('all_questions', rows); // Send the sorted questions back to the client
       }
