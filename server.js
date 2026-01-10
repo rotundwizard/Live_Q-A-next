@@ -151,6 +151,24 @@ io.engine.use(sessionMiddleware);
 // WebSocket logic
 let currentEventName = 'VBC Event';
 let currentEventDatetime = '';
+let liveQuestionStartTime;
+let timerInterval;
+let timerSeconds = 0;
+
+function startServerTimer() {
+  stopServerTimer();
+  liveQuestionStartTime = Date.now();
+  timerInterval = setInterval(() => {
+    timerSeconds = Math.floor((Date.now() - liveQuestionStartTime) / 1000);
+    io.emit('timer_update', timerSeconds);
+  }, 1000);
+}
+
+function stopServerTimer() {
+  clearInterval(timerInterval);
+  timerSeconds = 0;
+  io.emit('timer_update', timerSeconds);
+}
 
 io.on('connection', (socket) => {
   console.log('a user connected:', socket.id);
@@ -175,11 +193,18 @@ io.on('connection', (socket) => {
     }
   });
   db.get("SELECT * FROM questions WHERE status = 'live'", [], (err, row) => {
-    if (!err) io.emit('live_question', row);
+    if (!err) {
+      io.emit('live_question', row);
+      if (row) {
+        liveQuestionStartTime = row.created_at;
+        startServerTimer();
+      }
+    }
   });
   db.get("SELECT * FROM questions WHERE status = 'next_up'", [], (err, row) => {
     if (!err) io.emit('next_up_question', row);
   });
+  socket.emit('timer_update', timerSeconds);
 
   let submittedQuestionIds = new Set();
 
@@ -235,12 +260,13 @@ io.on('connection', (socket) => {
 
     else if (action === 'live') {
       db.run("UPDATE questions SET status = 'approved' WHERE status = 'live'");
-      db.run("UPDATE questions SET status = 'live' WHERE id = ?", [id], function (err) {
+      db.run("UPDATE questions SET status = 'live', created_at = ? WHERE id = ?", [Date.now(), id], function (err) {
         if (!err) {
           db.get("SELECT * FROM questions WHERE id = ?", [id], (err, row) => {
             if (!err) {
               io.emit('live_question', row);
               io.emit('next_up_question', null); // Clear the next up question
+              startServerTimer();
               emitAllQuestions();
             }
           });
@@ -335,6 +361,7 @@ io.on('connection', (socket) => {
         if (!err) {
           emitAllQuestions();
           io.emit('live_question', null);
+          stopServerTimer();
         }
       });
     }

@@ -5,19 +5,14 @@ const nextUpQuestionContent = document.getElementById('next-up-question-content'
 const approvedQuestionsContent = document.getElementById('approved-questions-content');
 const timerContent = document.getElementById('timer-content');
 
-let timerInterval;
-let timerSeconds = 0;
-
 socket.on('live_question', (question) => {
     if (question) {
         liveQuestionContent.innerHTML = `
             <div>${question.text}</div>
             <div>- ${question.username}</div>
         `;
-        startTimer();
     } else {
         liveQuestionContent.innerHTML = '';
-        stopTimer();
     }
 });
 
@@ -42,20 +37,11 @@ socket.on('approved_questions', (questions) => {
     });
 });
 
-function startTimer() {
-    stopTimer();
-    timerSeconds = 0;
-    timerInterval = setInterval(() => {
-        timerSeconds++;
-        updateTimerDisplay();
-    }, 1000);
-}
+socket.on('timer_update', (seconds) => {
+    updateTimerDisplay(seconds);
+});
 
-function stopTimer() {
-    clearInterval(timerInterval);
-}
-
-function updateTimerDisplay() {
+function updateTimerDisplay(timerSeconds) {
     const minutes = Math.floor(timerSeconds / 60);
     const seconds = timerSeconds % 60;
     timerContent.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
