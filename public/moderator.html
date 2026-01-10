@@ -103,6 +103,12 @@
       /* background-color: transparent; // Removed */
       border: none;
     }
+    #next-up-question-area {
+      flex-basis: 50%;
+      margin-left: 20px;
+      padding: 10px;
+      border-radius: 5px;
+    }
   </style>
 </head>
 <body>
@@ -134,6 +140,8 @@
     </div>
     <!-- Live question area -->
     <div id="live-question-area"></div>
+    <!-- Next Up question area -->
+    <div id="next-up-question-area"></div>
   </div>
 
   <!-- Question list container -->
@@ -169,12 +177,32 @@
       }
     });
 
+    socket.on('next_up_question', (question) => {
+      const nextUpQuestionArea = document.getElementById('next-up-question-area');
+      if (question) {
+        nextUpQuestionArea.innerHTML = `
+          <h3>Next Up</h3>
+          <div class="question" data-id="${question.id}">
+            <div class="question-text">${question.text} | <span class="vote-count">Votes: ${question.upvotes}</span></div>
+            <div class="username">Submitted by: ${question.username}</div>
+            <div class="timestamp">Submitted on: ${new Date(question.created_at).toLocaleString()}</div>
+            <div class="buttons">
+              <button onclick="markAsLive('${question.id}')">Live</button>
+              <button onclick="cancelNextUp('${question.id}')">Cancel</button>
+            </div>
+          </div>
+        `;
+      } else {
+        nextUpQuestionArea.innerHTML = '';
+      }
+    });
+
     // Update the question list based on the current sort order
     function updateQuestionList(questions) {
       const container = document.getElementById('questions');
       container.innerHTML = '';
 
-      const nonLiveQuestions = questions.filter(q => q.status !== 'live');
+      const nonLiveQuestions = questions.filter(q => q.status !== 'live' && q.status !== 'next_up');
 
       nonLiveQuestions.forEach((q) => {
         const div = document.createElement('div');
@@ -212,6 +240,9 @@
               ${q.status !== 'live' && q.status !== 'approved' 
                 ? `<button onclick="editQuestion('${q.id}')">Edit</button>` 
                 : ''}
+              ${q.status !== 'live' && q.status !== 'approved'
+                ? `<button onclick="markAsNextUp('${q.id}')">Next Up</button>`
+                : ''}
             </div>
           `;
         }
@@ -229,6 +260,16 @@
     // Mark a question as live
     function markAsLive(id) {
       socket.emit('moderator_action', { id, action: 'live', sortBy: currentSort });
+    }
+
+    // Mark a question as next up
+    function markAsNextUp(id) {
+      socket.emit('moderator_action', { id, action: 'next_up', sortBy: currentSort });
+    }
+
+    // Cancel next up status
+    function cancelNextUp(id) {
+      socket.emit('moderator_action', { id, action: 'cancel_next_up', sortBy: currentSort });
     }
 
     // Cancel live status

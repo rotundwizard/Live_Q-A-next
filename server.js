@@ -173,6 +173,9 @@ io.on('connection', (socket) => {
   db.get("SELECT * FROM questions WHERE status = 'live'", [], (err, row) => {
     if (!err) socket.emit('live_question', row);
   });
+  db.get("SELECT * FROM questions WHERE status = 'next_up'", [], (err, row) => {
+    if (!err) socket.emit('next_up_question', row);
+  });
 
   let submittedQuestionIds = new Set();
 
@@ -233,12 +236,40 @@ io.on('connection', (socket) => {
           db.get("SELECT * FROM questions WHERE id = ?", [id], (err, row) => {
             if (!err) {
               io.emit('live_question', row);
+              io.emit('next_up_question', null); // Clear the next up question
               emitAllQuestions();
             }
           });
         }
       });
-    } 
+    }
+
+    else if (action === 'next_up') {
+      // Clear any existing next_up question
+      db.run("UPDATE questions SET status = 'submitted' WHERE status = 'next_up'", [], (err) => {
+        if (!err) {
+          db.run("UPDATE questions SET status = 'next_up' WHERE id = ?", [id], function (err) {
+            if (!err) {
+              db.get("SELECT * FROM questions WHERE id = ?", [id], (err, row) => {
+                if (!err) {
+                  io.emit('next_up_question', row);
+                  emitAllQuestions();
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+
+    else if (action === 'cancel_next_up') {
+      db.run("UPDATE questions SET status = 'submitted' WHERE id = ?", [id], (err) => {
+        if (!err) {
+          io.emit('next_up_question', null);
+          emitAllQuestions();
+        }
+      });
+    }
     
     else if (action === 'archive') {
       db.get("SELECT * FROM questions WHERE id = ?", [id], (err, question) => {
