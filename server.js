@@ -279,6 +279,23 @@ io.on('connection', (socket) => {
       });
     }
     
+    else if (action === 'cancel_live') {
+      db.run("UPDATE questions SET status = 'approved' WHERE id = ?", [id], (err) => {
+        if (!err) {
+          emitAllQuestions();
+
+          // Notify the live view that there is no active live question
+          io.emit('live_question', null);
+        }
+      });
+    }
+    else if (action === 'edit') { // New edit action
+      db.run("UPDATE questions SET text = ? WHERE id = ?", [newText, id], (err) => {
+        if (!err) {
+          emitAllQuestions(); // Refresh question list for moderators
+        }
+      });
+    }
     else {
       db.run("UPDATE questions SET status = ? WHERE id = ?", [action, id], (err) => {
         if (!err) {

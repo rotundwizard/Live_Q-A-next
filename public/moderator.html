@@ -165,6 +165,9 @@
                 ? `<button onclick="unapprove('${q.id}')">Unapprove</button>` 
                 : `<button onclick="approve('${q.id}')">Approve</button>`}
               <button onclick="delete_question('${q.id}')">Delete</button>
+              ${q.status !== 'live' && q.status !== 'approved' 
+                ? `<button onclick="editQuestion('${q.id}')">Edit</button>` 
+                : ''}
             </div>
           `;
         }
@@ -374,6 +377,61 @@
 
     function unarchiveQuestion(id) {
       socket.emit('moderator_action', { id, action: 'unarchive', password, sortBy: currentSort });
+    }
+
+    // Function to enable editing of a question
+    function editQuestion(id) {
+      const questionElement = document.querySelector(`.question[data-id="${id}"]`);
+      if (!questionElement) return;
+
+      const questionTextElement = questionElement.querySelector('.question-text');
+      const originalText = questionTextElement.textContent.split(' | ')[0]; // Get original text, excluding votes
+
+      // Create a textarea for editing
+      const textarea = document.createElement('textarea');
+      textarea.value = originalText;
+      textarea.rows = 3;
+      textarea.style.width = '100%';
+      textarea.style.boxSizing = 'border-box'; // Include padding and border in the element's total width and height
+
+      // Replace the question text with the textarea
+      questionTextElement.innerHTML = '';
+      questionTextElement.appendChild(textarea);
+
+      // Hide Edit button, show Save and Cancel
+      const buttonsDiv = questionElement.querySelector('.buttons');
+      buttonsDiv.querySelector('button[onclick*="editQuestion"]').style.display = 'none';
+
+      const saveButton = document.createElement('button');
+      saveButton.textContent = 'Save';
+      saveButton.onclick = () => saveEditedQuestion(id, textarea.value);
+      buttonsDiv.appendChild(saveButton);
+
+      const cancelButton = document.createElement('button');
+      cancelButton.textContent = 'Cancel';
+      cancelButton.onclick = () => cancelEdit(id, originalText);
+      buttonsDiv.appendChild(cancelButton);
+    }
+
+    // Function to save the edited question
+    function saveEditedQuestion(id, newText) {
+      socket.emit('moderator_action', { id, action: 'edit', newText, password, sortBy: currentSort });
+    }
+
+    // Function to cancel editing a question
+    function cancelEdit(id, originalText) {
+      const questionElement = document.querySelector(`.question[data-id="${id}"]`);
+      if (!questionElement) return;
+
+      const questionTextElement = questionElement.querySelector('.question-text');
+      // Restore original text
+      questionTextElement.innerHTML = `${originalText} | <span class="vote-count">Votes: ${questionElement.querySelector('.vote-count').textContent.split(': ')[1]}</span>`;
+
+      // Show Edit button, hide Save and Cancel
+      const buttonsDiv = questionElement.querySelector('.buttons');
+      buttonsDiv.querySelector('button[onclick*="editQuestion"]').style.display = '';
+      buttonsDiv.querySelector('button[onclick*="saveEditedQuestion"]').remove();
+      buttonsDiv.querySelector('button[onclick*="cancelEdit"]').remove();
     }
   </script>
 
