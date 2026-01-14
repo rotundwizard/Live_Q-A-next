@@ -13,10 +13,8 @@ socket.on('live_question', (question) => {
             <div>${question.text}</div>
             <div>- ${question.username}</div>
         `;
-        socket.emit('start_timer');
     } else {
         liveQuestionContent.innerHTML = '';
-        socket.emit('stop_timer');
     }
 });
 
