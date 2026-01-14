@@ -28,12 +28,12 @@ body {
 }
 
 .timer-range {
-    font-size: 3rem;
+    font-size: 2rem;
     margin: 10px 0;
 }
 
 .timer-range-large {
-    font-size: 6rem;
+    font-size: 7rem;
     font-weight: bold;
 }
 
