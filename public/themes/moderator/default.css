@@ -86,16 +86,16 @@ button:hover {
   margin-top: 5px; /* Add spacing between the question text and the date */
 }
 .username {
-  margin-bottom: 0; !important;
-  margin-top: 0; !important;
+  margin-bottom: 0 !important;
+  margin-top: 0 !important;
   padding: 0;
 }
 
 .timestamp {
   font-size: 0.8em;
   color: #aaa;
-  margin-bottom: 0; !important;
-  margin-top: 0; !important;
+  margin-bottom: 0 !important;
+  margin-top: 0 !important;
   padding: 0;
 }
 #top-panel {

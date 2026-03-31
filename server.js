@@ -267,16 +267,16 @@ io.on('connection', (socket) => {
   db.all("SELECT * FROM questions WHERE status = 'approved' ORDER BY created_at DESC LIMIT 5", [], (err, rows) => {
     if (!err) {
       console.log('Questions retrieved from database:', rows);
-      io.emit('approved_questions', rows);
+      socket.emit('approved_questions', rows);
     } else {
       console.error('Error retrieving questions:', err.message);
     }
   });
   db.get("SELECT * FROM questions WHERE status = 'live'", [], (err, row) => {
-    if (!err) io.emit('live_question', row);
+    if (!err) socket.emit('live_question', row);
   });
   db.get("SELECT * FROM questions WHERE status = 'next_up'", [], (err, row) => {
-    if (!err) io.emit('next_up_question', row);
+    if (!err) socket.emit('next_up_question', row);
   });
 
   let submittedQuestionIds = new Set();
@@ -337,8 +337,19 @@ io.on('connection', (socket) => {
         if (!err) {
           db.get("SELECT * FROM questions WHERE id = ?", [id], (err, row) => {
             if (!err) {
+              // Check if the question being made live WAS the next_up question
+              db.get("SELECT id FROM questions WHERE status = 'next_up'", [], (err, nextUpRow) => {
+                if (!err && nextUpRow && nextUpRow.id === id) {
+                   // It was next_up, so now that it is live, we can clear next_up
+                   io.emit('next_up_question', null);
+                } else if (!err && !nextUpRow) {
+                   // No next_up question, so just in case, clear it
+                   io.emit('next_up_question', null);
+                }
+                // If it wasn't the next_up question, we DON'T clear next_up.
+              });
+
               io.emit('live_question', row);
-              io.emit('next_up_question', null); // Clear the next up question
               emitAllQuestions();
               startTimer();
             }
@@ -348,8 +359,8 @@ io.on('connection', (socket) => {
     }
 
     else if (action === 'next_up') {
-      // Clear any existing next_up question
-      db.run("UPDATE questions SET status = 'submitted' WHERE status = 'next_up'", [], (err) => {
+      // Clear any existing next_up question and set it back to approved
+      db.run("UPDATE questions SET status = 'approved' WHERE status = 'next_up'", [], (err) => {
         if (!err) {
           db.run("UPDATE questions SET status = 'next_up' WHERE id = ?", [id], function (err) {
             if (!err) {
