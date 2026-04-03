@@ -2,7 +2,10 @@ const socket = io();
 
 const liveQuestionContent = document.getElementById('live-question-content');
 const nextUpQuestionContent = document.getElementById('next-up-question-content');
-const approvedQuestionsContent = document.getElementById('approved-questions-content');
+const countApproved = document.getElementById('count-approved');
+const countUnapproved = document.getElementById('count-unapproved');
+const countToday = document.getElementById('count-today');
+const countTotal = document.getElementById('count-total');
 const timerContent = document.getElementById('timer-content');
 
 let timerSeconds = 0;
@@ -29,29 +32,12 @@ socket.on('next_up_question', (question) => {
     }
 });
 
-socket.on('approved_questions', (questions) => {
-    approvedQuestionsContent.innerHTML = '';
-    questions.forEach(q => {
-        const div = document.createElement('div');
-        div.innerHTML = `<div>${q.text}</div><div>- ${q.username}</div><hr>`;
-        approvedQuestionsContent.appendChild(div);
-    });
-    // Update the approved questions count
-    const approvedCount = document.getElementById('approved-count');
-    if (approvedCount) {
-        approvedCount.textContent = `(${questions.length})`;
-    }
+socket.on('question_counts', (counts) => {
+    if (countApproved) countApproved.textContent = counts.approved;
+    if (countUnapproved) countUnapproved.textContent = counts.unapproved;
+    if (countToday) countToday.textContent = counts.submittedToday;
+    if (countTotal) countTotal.textContent = counts.total;
 });
-
-function fetchApprovedQuestions() {
-    socket.emit('get_approved_questions');
-}
-
-// Fetch approved questions every 5 seconds
-setInterval(fetchApprovedQuestions, 5000);
-
-// Initial fetch
-fetchApprovedQuestions();
 
 const timer03 = document.getElementById('timer-0-3');
 const timer35 = document.getElementById('timer-3-5');

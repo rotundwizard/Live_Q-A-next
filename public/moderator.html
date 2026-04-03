@@ -124,6 +124,7 @@
 
     // Show the Next Up question in the top panel
     socket.on('next_up_question', (question) => {
+      console.log('Received next_up_question event:', question);
       const nextUpArea = document.getElementById('next-up-question-area');
       if (question) {
         nextUpArea.innerHTML = `
@@ -297,7 +298,6 @@
 
     // Archive a question
     function archive_question(id) {
-      socket.emit('moderator_action', { id, action: 'cancel_live', sortBy: currentSort });
       socket.emit('moderator_action', { id, action: 'archive', sortBy: currentSort });
     }
 

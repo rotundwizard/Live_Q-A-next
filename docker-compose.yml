@@ -1,13 +1,13 @@
 services:
   vbc_liveqa:
-    image: optionull/liveqa:latest
-    platform: linux/amd64
+    build: .
+    image: liveqa:local
     ports:
-      - "3000:3000" # Map port 3000 on the host to port 3000 in the container
+      - "3000:3000"
     volumes:
       - liveqa_data:/app/database
     environment:
-      - MODERATOR_PASSWORD=mod123 # Pass environment
+      - MODERATOR_PASSWORD=mod123
 
 volumes:
   liveqa_data:

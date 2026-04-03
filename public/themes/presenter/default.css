@@ -24,6 +24,7 @@ body {
 #next-up-question {
     border-color: greenyellow;
     color: #ccc;
+    font-size: 2em;
 }
 
 #live-question {
@@ -37,6 +38,28 @@ body {
     font-size: 5rem;
     text-align: center;
     margin-top: 20%;
+}
+
+.count-item {
+    font-size: 2.5rem;
+    margin: 15px 0;
+}
+
+#count-approved {
+    color: greenyellow;
+}
+
+#count-unapproved {
+    color: yellow;
+}
+
+#count-today {
+    color: #00BFFF;
+}
+
+#count-total {
+    font-weight: bold;
+    color: white;
 }
 
 .timer-range {
