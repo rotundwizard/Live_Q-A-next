@@ -4,6 +4,7 @@ const liveQuestionContent = document.getElementById('live-question-content');
 const nextUpQuestionContent = document.getElementById('next-up-question-content');
 const countApproved = document.getElementById('count-approved');
 const countUnapproved = document.getElementById('count-unapproved');
+const countToday = document.getElementById('count-today');
 const countTotal = document.getElementById('count-total');
 const timerContent = document.getElementById('timer-content');
 
@@ -34,6 +35,7 @@ socket.on('next_up_question', (question) => {
 socket.on('question_counts', (counts) => {
     if (countApproved) countApproved.textContent = counts.approved;
     if (countUnapproved) countUnapproved.textContent = counts.unapproved;
+    if (countToday) countToday.textContent = counts.submittedToday;
     if (countTotal) countTotal.textContent = counts.total;
 });
 

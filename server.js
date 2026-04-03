@@ -283,18 +283,25 @@ io.on('connection', (socket) => {
   emitQuestionCounts();
 
   let submittedQuestionIds = new Set();
-  const emitQuestionCounts = () => {
-    db.all("SELECT status FROM questions", [], (err, rows) => {
+  function emitQuestionCounts() {
+    db.all("SELECT status, created_at FROM questions", [], (err, rows) => {
       if (!err) {
         const approved = rows.filter(r => r.status === 'approved' || r.status === 'live' || r.status === 'next_up').length;
         const unapproved = rows.filter(r => r.status === 'submitted').length;
         const total = rows.length;
-        io.emit('question_counts', { approved, unapproved, total });
+
+        // Calculate questions submitted today (since midnight local time)
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        const startOfTodayMs = startOfToday.getTime();
+        const submittedToday = rows.filter(r => r.created_at >= startOfTodayMs).length;
+
+        io.emit('question_counts', { approved, unapproved, total, submittedToday });
       }
     });
-  };
+  }
 
-  const emitAllQuestionsToModerators = () => {
+  function emitAllQuestionsToModerators() {
     io.in('moderators').fetchSockets().then(sockets => {
       sockets.forEach(s => {
         getSortedQuestions(s.moderatorSortBy || 'recency', (err, rows) => {
@@ -302,7 +309,7 @@ io.on('connection', (socket) => {
         });
       });
     });
-  };
+  }
 
   socket.on('submit_question', ({ username, text, participantID }) => {
     const id = uuidv4();
