@@ -256,7 +256,8 @@ io.on('connection', (socket) => {
   // Check if the user is authenticated as a moderator
   if (socket.request.session.isAuthenticated) {
     socket.join('moderators');
-    getSortedQuestions('recency', (err, rows) => {
+    socket.moderatorSortBy = 'recency'; // Default sort order
+    getSortedQuestions(socket.moderatorSortBy, (err, rows) => {
       if (!err) socket.emit('all_questions', rows);
     });
   }
@@ -281,6 +282,16 @@ io.on('connection', (socket) => {
 
   let submittedQuestionIds = new Set();
 
+  const emitAllQuestionsToModerators = () => {
+    io.in('moderators').fetchSockets().then(sockets => {
+      sockets.forEach(s => {
+        getSortedQuestions(s.moderatorSortBy || 'recency', (err, rows) => {
+          if (!err) s.emit('all_questions', rows);
+        });
+      });
+    });
+  };
+
   socket.on('submit_question', ({ username, text, participantID }) => {
     const id = uuidv4();
     const created_at = Date.now();
@@ -296,9 +307,7 @@ io.on('connection', (socket) => {
     const stmt = db.prepare("INSERT INTO questions (id, username, text, participant_id, status, created_at) VALUES (?, ?, ?, ?, 'submitted', ?)");
     stmt.run(id, username, text, participantID, created_at, (err) => {
       if (!err) {
-        getSortedQuestions('recency', (err, rows) => {
-          if (!err) io.to('moderators').emit('all_questions', rows);
-        });
+        emitAllQuestionsToModerators();
       }
     });
     stmt.finalize();
@@ -306,13 +315,10 @@ io.on('connection', (socket) => {
 
   socket.on('moderator_action', ({ id, action, sortBy, newText }) => {
     if (!socket.request.session.isAuthenticated) return;
+    if (sortBy) socket.moderatorSortBy = sortBy;
 
     const emitAllQuestions = () => {
-      getSortedQuestions(sortBy, (err, rows) => {
-        if (!err) {
-          io.to('moderators').emit('all_questions', rows);
-        }
-      });
+      emitAllQuestionsToModerators();
     };
 
     if (action === 'questiondeleted') {
@@ -488,6 +494,7 @@ io.on('connection', (socket) => {
                   if (!err) {
                     io.emit('question_upvoted', [updatedQuestion]);
                     io.to('moderators').emit('update_vote', updatedQuestion);
+                    emitAllQuestionsToModerators();
                   }
                 });
               });
@@ -499,6 +506,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('request_questions', ({ sortBy }) => {
+    if (sortBy) socket.moderatorSortBy = sortBy;
     getSortedQuestions(sortBy, (err, rows) => {
       if (!err) {
         socket.emit('all_questions', rows);
