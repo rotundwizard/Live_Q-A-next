@@ -277,10 +277,22 @@ io.on('connection', (socket) => {
     if (!err) socket.emit('live_question', row);
   });
   db.get("SELECT * FROM questions WHERE status = 'next_up'", [], (err, row) => {
-    if (!err) socket.emit('next_up_question', row);
+  if (!err) socket.emit('next_up_question', row);
   });
 
+  emitQuestionCounts();
+
   let submittedQuestionIds = new Set();
+  const emitQuestionCounts = () => {
+    db.all("SELECT status FROM questions", [], (err, rows) => {
+      if (!err) {
+        const approved = rows.filter(r => r.status === 'approved' || r.status === 'live' || r.status === 'next_up').length;
+        const unapproved = rows.filter(r => r.status === 'submitted').length;
+        const total = rows.length;
+        io.emit('question_counts', { approved, unapproved, total });
+      }
+    });
+  };
 
   const emitAllQuestionsToModerators = () => {
     io.in('moderators').fetchSockets().then(sockets => {
@@ -308,6 +320,7 @@ io.on('connection', (socket) => {
     stmt.run(id, username, text, participantID, created_at, (err) => {
       if (!err) {
         emitAllQuestionsToModerators();
+        emitQuestionCounts();
       }
     });
     stmt.finalize();
@@ -319,6 +332,7 @@ io.on('connection', (socket) => {
 
     const emitAllQuestions = () => {
       emitAllQuestionsToModerators();
+      emitQuestionCounts();
     };
 
     if (action === 'questiondeleted') {
@@ -495,6 +509,7 @@ io.on('connection', (socket) => {
                     io.emit('question_upvoted', [updatedQuestion]);
                     io.to('moderators').emit('update_vote', updatedQuestion);
                     emitAllQuestionsToModerators();
+                    emitQuestionCounts();
                   }
                 });
               });

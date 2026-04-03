@@ -39,6 +39,24 @@ body {
     margin-top: 20%;
 }
 
+.count-item {
+    font-size: 2.5rem;
+    margin: 15px 0;
+}
+
+#count-approved {
+    color: greenyellow;
+}
+
+#count-unapproved {
+    color: yellow;
+}
+
+#count-total {
+    font-weight: bold;
+    color: white;
+}
+
 .timer-range {
     font-size: 2rem;
     margin: 10px 0;
